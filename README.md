@@ -1,1 +1,1 @@
-# Qualentum# Proyecto de Consumo Energético
+# Qualentum# Proyecto de Procesamiento de números
