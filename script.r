@@ -1,76 +1,94 @@
-# Paso 1: Cargar librerías y datos
-if (!require("dplyr")) install.packages("dplyr")
-if (!require("tidyr")) install.packages("tidyr")
+---
+title: "Análisis Exploratorio de Datos: mtcars"
+author: "Tu Nombre"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: readable
+    toc: true
+    toc_depth: 2
+    toc_float: true
+---
 
-library(dplyr)
-library(tidyr)
+```{r setup, include=FALSE}
+# Configuración inicial
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(knitr)
+library(DT)
+```
 
-# Cargar el dataset mtcars y convertirlo a dataframe
-data(mtcars)
-df <- as.data.frame(mtcars)
+# Introducción
 
-# Paso 2: Selección de columnas y filtrado de filas
-df_filtered <- df %>%
-  select(mpg, cyl, hp, gear) %>%  # Seleccionar columnas específicas
-  filter(cyl > 4)  # Filtrar filas con más de 4 cilindros
+El objetivo de este informe es realizar un análisis exploratorio del conjunto de datos **mtcars**, que contiene información sobre el rendimiento y características de automóviles. Este análisis incluye:
 
-# Paso 3: Ordenación y renombrado de columnas
-df_sorted <- df_filtered %>%
-  arrange(desc(hp)) %>%  # Ordenar por potencia (hp) de forma descendente
-  rename(consumo = mpg, potencia = hp)  # Renombrar columnas
+- Presentación del conjunto de datos mediante tablas (estática e interactiva).
+- Visualización gráfica de relaciones entre variables clave.
+- Resumen de hallazgos principales.
 
-# Paso 4: Creación de nuevas columnas y agregación
-df_with_efficiency <- df_sorted %>%
-  mutate(eficiencia = consumo / potencia)  # Crear columna eficiencia
+El informe está estructurado de la siguiente manera:
+1. **Análisis de datos**: Presentación y exploración de los datos.
+2. **Conclusiones**: Resumen de los puntos clave observados.
 
-df_summary <- df_with_efficiency %>%
-  group_by(cyl) %>%  # Agrupar por número de cilindros
-  summarise(
-    consumo_medio = mean(consumo),
-    potencia_maxima = max(potencia)
-  )
+---
 
-# Paso 5: Creación del segundo dataframe y unión de dataframes
-df_transmision <- data.frame(
-  gear = c(3, 4, 5),
-  tipo_transmision = c("Manual", "Automática", "Semiautomática")
-)
+# Análisis de Datos
 
-df_joined <- left_join(df_with_efficiency, df_transmision, by = "gear")
+## Carga del Conjunto de Datos
 
-# Paso 6: Transformación de formatos
-# Cambiar a formato largo
-df_long <- df_joined %>%
-  pivot_longer(
-    cols = c(consumo, potencia, eficiencia),
-    names_to = "medida",
-    values_to = "valor"
-  )
+```{r cargar_datos}
+# Cargar el conjunto de datos mtcars
+datos <- mtcars
+# Añadir una columna de nombres de los automóviles
+datos <- datos %>% rownames_to_column("Modelo")
+```
 
-# Identificar duplicados antes de transformar de nuevo a formato ancho
-df_long_dedup <- df_long %>%
-  group_by(cyl, gear, tipo_transmision, medida) %>%
-  summarise(valor = mean(valor), .groups = "drop")  # Promedio para duplicados
+## Exploración Inicial
 
-# Cambiar a formato ancho
-df_wide <- df_long_dedup %>%
-  pivot_wider(
-    names_from = medida,
-    values_from = valor
-  )
+### Tabla Estática
 
-# Paso 7: Verificación (Imprimir resultados)
-cat("Filtrado y ordenado:\n")
-print(df_sorted)
+A continuación, se presentan las primeras filas del conjunto de datos utilizando una tabla estática:
 
-cat("\nResumen por cilindros:\n")
-print(df_summary)
+```{r tabla_estatica}
+# Crear tabla estática con kable
+kable(head(datos), caption = "Primeras filas del conjunto de datos mtcars")
+```
 
-cat("\nUnión con tipo de transmisión:\n")
-print(df_joined)
+### Tabla Interactiva
 
-cat("\nFormato largo:\n")
-print(df_long)
+La tabla interactiva permite explorar el conjunto de datos completo:
 
-cat("\nFormato ancho:\n")
-print(df_wide)
+```{r tabla_interactiva}
+# Crear tabla interactiva con DT
+datatable(datos, options = list(pageLength = 10), caption = "Conjunto de datos mtcars completo")
+```
+
+## Visualización Gráfica
+
+A continuación, se presenta un gráfico de dispersión que analiza la relación entre el consumo de combustible (mpg) y el peso (wt) de los automóviles:
+
+```{r grafico_dispersion}
+# Crear gráfico de dispersión
+ggplot(datos, aes(x = wt, y = mpg)) +
+  geom_point(color = "blue", size = 3) +
+  labs(
+    title = "Relación entre Peso y Consumo de Combustible",
+    x = "Peso (wt)",
+    y = "Consumo de Combustible (mpg)"
+  ) +
+  theme_minimal()
+```
+
+---
+
+# Conclusiones
+
+De este análisis se pueden extraer las siguientes conclusiones principales:
+
+1. **Peso y consumo de combustible**: Existe una relación negativa entre el peso de un automóvil y su consumo de combustible. Los automóviles más pesados tienden a tener un menor consumo (mpg).
+2. **Exploración interactiva**: La tabla interactiva facilita la inspección detallada de las características de cada modelo de automóvil.
+3. **Visualización**: Los gráficos son herramientas útiles para identificar patrones en los datos.
+
+Este análisis exploratorio proporciona una visión inicial de los datos de `mtcars`, lo que permite profundizar en estudios más avanzados o específicos en el futuro.
+
+---
