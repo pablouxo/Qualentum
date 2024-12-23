@@ -1,65 +1,76 @@
-# Función para leer los números desde el archivo
-leer_numeros <- function(archivo) {
-  # Verificar si el archivo existe
-  if (!file.exists(archivo)) {
-    stop("El archivo no existe. Deteniendo ejecución.")
-  }
-  # Leer los números del archivo y convertirlos en un vector de enteros
-  numeros <- as.integer(readLines(archivo))
-  return(numeros)
-}
+# Paso 1: Cargar librerías y datos
+if (!require("dplyr")) install.packages("dplyr")
+if (!require("tidyr")) install.packages("tidyr")
 
-# Función para calcular los estadísticos (media, mediana, desviación estándar)
-calcular_estadisticos <- function(numeros) {
-  media <- mean(numeros)
-  mediana <- median(numeros)
-  desviacion_estandar <- sd(numeros)
-  return(list(media = media, mediana = mediana, desviacion_estandar = desviacion_estandar))
-}
+library(dplyr)
+library(tidyr)
 
-# Función para calcular el cuadrado de cada número usando sapply
-calcular_cuadrados <- function(numeros) {
-  cuadrados <- sapply(numeros, function(x) x^2)
-  return(cuadrados)
-}
+# Cargar el dataset mtcars y convertirlo a dataframe
+data(mtcars)
+df <- as.data.frame(mtcars)
 
-# Función para generar el archivo de resultados
-guardar_resultados <- function(estadisticos, cuadrados, archivo_salida) {
-  # Abrir el archivo para escribir
-  salida <- file(archivo_salida, "w")
-  
-  # Escribir los estadísticos
-  writeLines(paste("Media:", estadisticos$media), salida)
-  writeLines(paste("Mediana:", estadisticos$mediana), salida)
-  writeLines(paste("Desviación estándar:", estadisticos$desviacion_estandar), salida)
-  
-  # Verificar si la desviación estándar es mayor a 10
-  if (estadisticos$desviacion_estandar > 10) {
-    writeLines("¡Alta variabilidad en los datos!", salida)
-  }
-  
-  # Escribir los cuadrados de los números
-  writeLines("Cuadrados de los números:", salida)
-  writeLines(paste(cuadrados, collapse = ", "), salida)
-  
-  # Cerrar el archivo
-  close(salida)
-}
+# Paso 2: Selección de columnas y filtrado de filas
+df_filtered <- df %>%
+  select(mpg, cyl, hp, gear) %>%  # Seleccionar columnas específicas
+  filter(cyl > 4)  # Filtrar filas con más de 4 cilindros
 
-# Función principal que coordina todo el proceso
-procesar_datos <- function(archivo_entrada, archivo_salida) {
-  # Paso 1: Leer los números desde el archivo
-  numeros <- leer_numeros(archivo_entrada)
-  
-  # Paso 2: Calcular los estadísticos
-  estadisticos <- calcular_estadisticos(numeros)
-  
-  # Paso 3: Calcular los cuadrados de los números
-  cuadrados <- calcular_cuadrados(numeros)
-  
-  # Paso 4: Guardar los resultados en un archivo
-  guardar_resultados(estadisticos, cuadrados, archivo_salida)
-}
+# Paso 3: Ordenación y renombrado de columnas
+df_sorted <- df_filtered %>%
+  arrange(desc(hp)) %>%  # Ordenar por potencia (hp) de forma descendente
+  rename(consumo = mpg, potencia = hp)  # Renombrar columnas
 
-# Ejecutar el proceso
-procesar_datos("numeros.txt", "resultados.txt")
+# Paso 4: Creación de nuevas columnas y agregación
+df_with_efficiency <- df_sorted %>%
+  mutate(eficiencia = consumo / potencia)  # Crear columna eficiencia
+
+df_summary <- df_with_efficiency %>%
+  group_by(cyl) %>%  # Agrupar por número de cilindros
+  summarise(
+    consumo_medio = mean(consumo),
+    potencia_maxima = max(potencia)
+  )
+
+# Paso 5: Creación del segundo dataframe y unión de dataframes
+df_transmision <- data.frame(
+  gear = c(3, 4, 5),
+  tipo_transmision = c("Manual", "Automática", "Semiautomática")
+)
+
+df_joined <- left_join(df_with_efficiency, df_transmision, by = "gear")
+
+# Paso 6: Transformación de formatos
+# Cambiar a formato largo
+df_long <- df_joined %>%
+  pivot_longer(
+    cols = c(consumo, potencia, eficiencia),
+    names_to = "medida",
+    values_to = "valor"
+  )
+
+# Identificar duplicados antes de transformar de nuevo a formato ancho
+df_long_dedup <- df_long %>%
+  group_by(cyl, gear, tipo_transmision, medida) %>%
+  summarise(valor = mean(valor), .groups = "drop")  # Promedio para duplicados
+
+# Cambiar a formato ancho
+df_wide <- df_long_dedup %>%
+  pivot_wider(
+    names_from = medida,
+    values_from = valor
+  )
+
+# Paso 7: Verificación (Imprimir resultados)
+cat("Filtrado y ordenado:\n")
+print(df_sorted)
+
+cat("\nResumen por cilindros:\n")
+print(df_summary)
+
+cat("\nUnión con tipo de transmisión:\n")
+print(df_joined)
+
+cat("\nFormato largo:\n")
+print(df_long)
+
+cat("\nFormato ancho:\n")
+print(df_wide)
