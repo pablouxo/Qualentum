@@ -1,65 +1,53 @@
-# Cargar el dataset AirPassengers
-data("AirPassengers")
+# Cargar el dataset nottem
+data("nottem")
 
 # Inspeccionar la estructura del dataset
-print(class(AirPassengers))   # Verifica que es una serie temporal (ts)
-print(summary(AirPassengers)) # Resumen estadístico
-print(start(AirPassengers))   # Inicio de la serie
-print(end(AirPassengers))     # Fin de la serie
-print(frequency(AirPassengers)) # Frecuencia: 12 (mensual)
-
-# 2. Exploración inicial
+print(class(nottem))  # Verifica que es una serie temporal (ts)
+print(summary(nottem))  # Resumen estadístico
 
 # Graficar la serie temporal
-plot(AirPassengers, main="Serie Temporal de Pasajeros Aéreos", ylab="Número de Pasajeros", xlab="Año")
+plot(nottem, main = "Temperaturas Mensuales en Nottingham (1920-1939)",
+     xlab = "Año", ylab = "Temperatura", col = "blue")
 
-# Calcular estadísticas descriptivas básicas
-mean_val <- mean(AirPassengers)
-sd_val <- sd(AirPassengers)
-cat("Media de la serie: ", mean_val, "\n")
-cat("Desviación estándar de la serie: ", sd_val, "\n")
-
-# 3. Análisis de tendencia y estacionalidad
+# 2. Exploración y preparación de datos
 
 # Descomponer la serie temporal
-decomp <- decompose(AirPassengers)
+decomp <- decompose(nottem)
 
-# Visualizar los componentes
+# Visualizar los componentes (tendencia, estacionalidad y aleatoriedad)
 plot(decomp)
 
-# 4. Análisis de estacionariedad
+# 3. Análisis de estacionariedad
 
-# Graficar la autocorrelación
-acf(AirPassengers, main="Función de Autocorrelación (ACF)")
+# Graficar la autocorrelación (ACF)
+acf(nottem, main = "Función de Autocorrelación (ACF)")
 
-# Graficar la autocorrelación parcial
-pacf(AirPassengers, main="Función de Autocorrelación Parcial (PACF)")
+# Graficar la autocorrelación parcial (PACF)
+pacf(nottem, main = "Función de Autocorrelación Parcial (PACF)")
 
 # Instalar el paquete tseries si no está instalado
 if (!require(tseries)) install.packages("tseries", dependencies = TRUE)
 library(tseries)
 
 # Prueba de Dickey-Fuller aumentada
-adf_test <- adf.test(AirPassengers)
+adf_test <- adf.test(nottem)
 cat("Resultado de la prueba ADF:\n")
 print(adf_test)
 
+# 4. Transformación de la serie (si es necesario)
+
 # Si la serie no es estacionaria, realizar diferenciación
 if(adf_test$p.value > 0.05) {
-  AirPassengers_diff <- diff(AirPassengers)
-  plot(AirPassengers_diff, main="Serie Temporal Diferenciada")
+  nottem_diff <- diff(nottem)
+  plot(nottem_diff, main = "Serie Temporal Diferenciada")
+  
+  # Volver a realizar la prueba ADF en la serie diferenciada
+  adf_test_diff <- adf.test(nottem_diff)
+  cat("Resultado de la prueba ADF en la serie diferenciada:\n")
+  print(adf_test_diff)
 }
 
 # 5. Detección de valores atípicos
 
 # Graficar boxplot para detectar posibles outliers
-boxplot(AirPassengers, main="Boxplot de la Serie Temporal", ylab="Número de Pasajeros")
-
-# 6. Interpretación de resultados
-
-# Resume los resultados observados (escribe tu análisis en un archivo o consola)
-cat("Análisis de los patrones en la serie temporal:\n")
-cat("- La serie presenta un fuerte patrón estacional, con picos durante los meses de verano.\n")
-cat("- Existe una tendencia general ascendente a lo largo del tiempo.\n")
-cat("- No se detectaron outliers significativos en la serie temporal.\n")
-cat("- La serie no es completamente estacionaria, pero al aplicar una diferenciación simple, la serie se vuelve estacionaria.\n")
+boxplot(nottem, main = "Boxplot de la Serie Temporal de Temperaturas", ylab = "Temperatura")
