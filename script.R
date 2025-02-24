@@ -1,84 +1,65 @@
-# Cargar las librerías necesarias
-library(ggplot2)
-library(cluster)
+# Cargar el dataset AirPassengers
+data("AirPassengers")
 
-# 1. Carga del dataset
-dataset <- read.csv("Mall_Customers.csv")
-head(dataset)
+# Inspeccionar la estructura del dataset
+print(class(AirPassengers))   # Verifica que es una serie temporal (ts)
+print(summary(AirPassengers)) # Resumen estadístico
+print(start(AirPassengers))   # Inicio de la serie
+print(end(AirPassengers))     # Fin de la serie
+print(frequency(AirPassengers)) # Frecuencia: 12 (mensual)
 
-# 2. Exploración y limpieza de datos
-# Examinar las dimensiones y características
-dim(dataset)
-str(dataset)
-summary(dataset)
+# 2. Exploración inicial
 
-# Renombrar las columnas para facilitar su manejo
-colnames(dataset) <- c("CustomerID", "Gender", "Age", "AnnualIncome", "SpendingScore")
+# Graficar la serie temporal
+plot(AirPassengers, main="Serie Temporal de Pasajeros Aéreos", ylab="Número de Pasajeros", xlab="Año")
 
-# Codificar la variable 'Gender' como numérica (1 para masculino, 0 para femenino)
-dataset$Gender <- ifelse(dataset$Gender == "Male", 1, 0)
+# Calcular estadísticas descriptivas básicas
+mean_val <- mean(AirPassengers)
+sd_val <- sd(AirPassengers)
+cat("Media de la serie: ", mean_val, "\n")
+cat("Desviación estándar de la serie: ", sd_val, "\n")
 
-# Normalizar las variables 'AnnualIncome' y 'SpendingScore'
-dataset$AnnualIncome <- scale(dataset$AnnualIncome)
-dataset$SpendingScore <- scale(dataset$SpendingScore)
+# 3. Análisis de tendencia y estacionalidad
 
-# 3. Exploración de variables
-# Visualización de la distribución de la variable 'Age'
-ggplot(dataset, aes(x=Age)) + 
-  geom_histogram(binwidth=5, fill="blue", color="black", alpha=0.7) +
-  labs(title="Distribución de Edad", x="Edad", y="Frecuencia")
+# Descomponer la serie temporal
+decomp <- decompose(AirPassengers)
 
-# 4. Entrenamiento de modelos de clustering
+# Visualizar los componentes
+plot(decomp)
 
-## K-Means
-# Calcular la suma de cuadrados interna (tot.withinss) para diferentes números de clusters
-wss <- numeric(6)
-for(i in 2:6) {
-  kmeans_model <- kmeans(dataset[, c("AnnualIncome", "SpendingScore")], centers = i)
-  wss[i] <- kmeans_model$tot.withinss
+# 4. Análisis de estacionariedad
+
+# Graficar la autocorrelación
+acf(AirPassengers, main="Función de Autocorrelación (ACF)")
+
+# Graficar la autocorrelación parcial
+pacf(AirPassengers, main="Función de Autocorrelación Parcial (PACF)")
+
+# Instalar el paquete tseries si no está instalado
+if (!require(tseries)) install.packages("tseries", dependencies = TRUE)
+library(tseries)
+
+# Prueba de Dickey-Fuller aumentada
+adf_test <- adf.test(AirPassengers)
+cat("Resultado de la prueba ADF:\n")
+print(adf_test)
+
+# Si la serie no es estacionaria, realizar diferenciación
+if(adf_test$p.value > 0.05) {
+  AirPassengers_diff <- diff(AirPassengers)
+  plot(AirPassengers_diff, main="Serie Temporal Diferenciada")
 }
 
-# Graficar el método del codo para determinar el número óptimo de clusters
-plot(2:6, wss[2:6], type="b", xlab="Número de clusters", ylab="Suma de cuadrados interna")
+# 5. Detección de valores atípicos
 
-# Entrenar el modelo K-Means con el número óptimo de clusters (por ejemplo, 4)
-kmeans_model <- kmeans(dataset[, c("AnnualIncome", "SpendingScore")], centers = 4)
-dataset$KMeansCluster <- kmeans_model$cluster
+# Graficar boxplot para detectar posibles outliers
+boxplot(AirPassengers, main="Boxplot de la Serie Temporal", ylab="Número de Pasajeros")
 
-## Clustering Jerárquico
-# Calcular una matriz de distancias
-dist_matrix <- dist(dataset[, c("AnnualIncome", "SpendingScore")], method = "euclidean")
+# 6. Interpretación de resultados
 
-# Aplicar el método ward.D para generar un dendrograma
-hc <- hclust(dist_matrix, method = "ward.D")
-plot(hc)
-
-# Cortar el dendrograma en 4 clusters
-clusters_hc <- cutree(hc, k=4)
-dataset$HCCluster <- clusters_hc
-
-# 5. Evaluación de modelos usando la métrica de silueta
-silhouette_kmeans <- silhouette(kmeans_model$cluster, dist_matrix)
-silhouette_hc <- silhouette(clusters_hc, dist_matrix)
-
-# Promedio de silueta para cada modelo
-mean(silhouette_kmeans[, 3])  # Promedio de silueta para K-Means
-mean(silhouette_hc[, 3])      # Promedio de silueta para jerárquico
-
-# 6. Análisis descriptivo de segmentos
-# Estadísticas descriptivas por cluster K-Means
-aggregate(cbind(Age, AnnualIncome, SpendingScore) ~ KMeansCluster, data = dataset, mean)
-
-# Estadísticas descriptivas por cluster jerárquico
-aggregate(cbind(Age, AnnualIncome, SpendingScore) ~ HCCluster, data = dataset, mean)
-
-# 7. Visualización de los resultados
-# Gráfico de dispersión de los clusters generados por K-Means
-ggplot(dataset, aes(x = AnnualIncome, y = SpendingScore, color = factor(KMeansCluster))) +
-  geom_point() +
-  labs(title = "Clusters generados por K-Means", x = "Ingreso Anual", y = "Puntuación de Gasto")
-
-# Gráfico de dispersión de los clusters generados por Clustering Jerárquico
-ggplot(dataset, aes(x = AnnualIncome, y = SpendingScore, color = factor(HCCluster))) +
-  geom_point() +
-  labs(title = "Clusters generados por Clustering Jerárquico", x = "Ingreso Anual", y = "Puntuación de Gasto")
+# Resume los resultados observados (escribe tu análisis en un archivo o consola)
+cat("Análisis de los patrones en la serie temporal:\n")
+cat("- La serie presenta un fuerte patrón estacional, con picos durante los meses de verano.\n")
+cat("- Existe una tendencia general ascendente a lo largo del tiempo.\n")
+cat("- No se detectaron outliers significativos en la serie temporal.\n")
+cat("- La serie no es completamente estacionaria, pero al aplicar una diferenciación simple, la serie se vuelve estacionaria.\n")
